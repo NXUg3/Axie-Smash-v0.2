@@ -15,6 +15,7 @@ export const KOTARO_SHEETS=Object.freeze({
 export const BUBA_SHEETS=Object.freeze({
   idle:Object.freeze({image:'./assets/sprites/buba/idle.png',config:'./assets/sprites/buba/idle.json'}),
   walk:Object.freeze({image:'./assets/sprites/buba/walk.png',config:'./assets/sprites/buba/walk.json'}),
+  jump:Object.freeze({image:'./assets/sprites/buba/jump.png',config:'./assets/sprites/buba/jump.json'}),
   hurt:Object.freeze({image:'./assets/sprites/buba/Hit.png',config:'./assets/sprites/buba/Hit.json'}),
   defeat:Object.freeze({image:'./assets/sprites/buba/KO Animation.png',config:'./assets/sprites/buba/KO Animation.json'}),
   overdrive:Object.freeze({image:'./assets/sprites/buba/Overdrive.png',config:'./assets/sprites/buba/Overdrive.json'}),

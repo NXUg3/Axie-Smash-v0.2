@@ -443,3 +443,18 @@
 #room-server{width:min(90%,420px);padding:10px;border:1px solid #60729f;border-radius:8px;background:#0c152b;color:white;font:inherit;font-size:13px;}
 
 #game-container{position:absolute;left:50%;top:50%;width:906px;height:606px;margin:0;transform-origin:center;transition:none;}
+
+/* Móvil: el juego conserva su lienzo 3:2 y gira visualmente en orientación vertical. */
+.mobile-device body { overscroll-behavior:none; touch-action:none; }
+.mobile-device #touch-controls { bottom:30px; padding:0 24px; align-items:flex-end; }
+.mobile-device .touch-dpad,.mobile-device .touch-actions { gap:12px; }
+.mobile-device .touch-btn { width:66px; height:66px; border-width:3px; background:rgba(7,16,31,.66); border-color:rgba(255,255,255,.78); box-shadow:0 3px 10px #0009,inset 0 0 10px #69e9ff33; font-size:23px; }
+.mobile-device .touch-btn:active { transform:scale(.92); background:rgba(255,207,64,.58); }
+.mobile-device #pause-btn { top:90px; right:18px; bottom:auto; padding:10px 15px; }
+.mobile-device.mobile-portrait #pause-btn { right:110px; }
+.mobile-device #controls-hint { display:none !important; }
+.mobile-device #watermark-ticker { height:13px; font-size:8px; }
+.mobile-device #game-container { box-shadow:none; }
+@media (pointer:coarse) {
+  .touch-btn { -webkit-user-select:none; user-select:none; }
+}

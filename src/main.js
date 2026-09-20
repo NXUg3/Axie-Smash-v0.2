@@ -216,6 +216,17 @@ import { createRoomFlow } from '../js/scenes.js';
   const SPRITE_HEIGHT = Math.round(H * 0.35);
   const FIGHTER_RENDER_SCALE = SPRITE_HEIGHT / BASE_SPRITE_HEIGHT;
   const GRAVITY = 0.7;
+  const mobileQuery = window.matchMedia('(pointer:coarse)');
+  const mobileUa = navigator.userAgentData?.mobile === true || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+  const mobilePreview = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && new URLSearchParams(location.search).has('mobile');
+  let mobileMode = mobilePreview || mobileUa || (mobileQuery.matches && navigator.maxTouchPoints > 0 && Math.min(screen.width,screen.height) <= 1024);
+  function refreshDeviceMode() {
+    mobileMode = mobilePreview || mobileUa || (mobileQuery.matches && navigator.maxTouchPoints > 0 && Math.min(screen.width,screen.height) <= 1024);
+    const portrait = mobileMode && innerHeight > innerWidth;
+    document.documentElement.classList.toggle('mobile-device',mobileMode);
+    document.documentElement.classList.toggle('mobile-portrait',portrait);
+    return portrait;
+  }
 
   const screens = {
     SPLASH: document.getElementById('screen-splash'),
@@ -294,7 +305,7 @@ import { createRoomFlow } from '../js/scenes.js';
     }
     if (newState === 'BATTLE') {
       hud.classList.remove('hidden'); timerEl.classList.remove('hidden'); controlsHint.classList.remove('hidden');
-      if (controls.touchEnabled) touchControlsEl.classList.remove('hidden');
+      if (mobileMode || controls.touchEnabled) touchControlsEl.classList.remove('hidden');
     }
     if (newState === 'MENU') renderMenuScreen();
     if (newState === 'OPTIONS') renderOptionsScreen();
@@ -705,10 +716,14 @@ import { createRoomFlow } from '../js/scenes.js';
   optSfxSlider.addEventListener('change', () => AudioMgr.move());
   document.getElementById('options-save-btn').addEventListener('click', () => { AudioMgr.confirm(); saveSettingsToStorage(); goTo(optionsReturnState); });
   function applyResolutionSetting() {
-    const fit=Math.min((innerWidth-16)/906,(innerHeight-16)/606,settings.resolution==='1920x1080'?1.1:1);
-    gameContainer.style.transform='translate(-50%,-50%) scale('+Math.max(0.1,fit)+')';
+    const portrait=refreshDeviceMode(),margin=mobileMode?4:16,maxScale=settings.resolution==='1920x1080'&&!mobileMode?1.1:1;
+    const fit=portrait
+      ? Math.min((innerWidth-margin)/606,(innerHeight-margin)/906,maxScale)
+      : Math.min((innerWidth-margin)/906,(innerHeight-margin)/606,maxScale);
+    gameContainer.style.transform='translate(-50%,-50%) '+(portrait?'rotate(90deg) ':'')+'scale('+Math.max(0.1,fit)+')';
   }
   window.addEventListener('resize',applyResolutionSetting);
+  window.addEventListener('orientationchange',()=>setTimeout(applyResolutionSetting,120));
 
   // ===========================================================
   // CONTROLES (remapeo teclado / gamepad / táctil)
@@ -1270,7 +1285,8 @@ import { createRoomFlow } from '../js/scenes.js';
     ctx.save();
     if (flashing) ctx.globalAlpha = 0.55;
     ctx.globalCompositeOperation = 'source-over';
-    ctx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(source.surface, source.sx, source.sy, source.sw, source.sh, -dw / 2, -dh, dw, dh);
     ctx.restore();
   }
@@ -1492,23 +1508,33 @@ import { createRoomFlow } from '../js/scenes.js';
       }
     }
   }
+  function readGamepadState(pad, gpScheme) {
+    if (!pad) return {left:false,right:false,jump:false,basic:false,special:false,overdrive:false};
+    const axisX=pad.axes?.[0]||0,pressed=index=>Number.isInteger(index)&&!!pad.buttons?.[index]?.pressed;
+    return {
+      left:axisX < -0.4 || pressed(14),right:axisX > 0.4 || pressed(15),
+      jump:pressed(gpScheme.jump),basic:pressed(gpScheme.basic),
+      special:pressed(gpScheme.special),overdrive:pressed(gpScheme.overdrive)
+    };
+  }
   function applyGamepadInput(fighter, gpScheme, padIndex) {
     if (STATE !== 'BATTLE' || fighter.isDead) return;
     const pads = (navigator.getGamepads ? navigator.getGamepads() : []) || [];
     const pad = pads[padIndex];
     if (!pad) return;
-    const axisX = pad.axes && pad.axes.length ? pad.axes[0] : 0;
-    const dpadLeft = pad.buttons[14] && pad.buttons[14].pressed;
-    const dpadRight = pad.buttons[15] && pad.buttons[15].pressed;
+    const input=readGamepadState(pad,gpScheme);
     if (!fighter.isAttacking) {
-      if (axisX < -0.4 || dpadLeft) { fighter.vx = -fighter.speed; fighter.walking = true; }
-      else if (axisX > 0.4 || dpadRight) { fighter.vx = fighter.speed; fighter.walking = true; }
-      if (pad.buttons[gpScheme.jump] && pad.buttons[gpScheme.jump].pressed && fighter.onGround) { fighter.vy = fighter.jumpPower; fighter.onGround = false; AudioMgr.jump(); }
-      if (pad.buttons[gpScheme.basic] && pad.buttons[gpScheme.basic].pressed) fighter.startAttack('basic');
-      if (pad.buttons[gpScheme.special] && pad.buttons[gpScheme.special].pressed) fighter.startAttack('special');
+      if (input.left) { fighter.vx = -fighter.speed; fighter.walking = true; }
+      else if (input.right) { fighter.vx = fighter.speed; fighter.walking = true; }
+      if (input.jump && fighter.onGround) { fighter.vy = fighter.jumpPower; fighter.onGround = false; AudioMgr.jump(); }
+      if (input.basic) fighter.startAttack('basic');
+      if (input.special) fighter.startAttack('special');
     }
-    if (pad.buttons[gpScheme.overdrive] && pad.buttons[gpScheme.overdrive].pressed) fighter.activateOverdrive();
+    if (input.overdrive) fighter.activateOverdrive();
   }
+
+  window.addEventListener('gamepadconnected',()=>{if(STATE==='CONTROLS'&&ctrlActiveTab==='gamepad')renderGamepadTab();});
+  window.addEventListener('gamepaddisconnected',()=>{if(STATE==='CONTROLS'&&ctrlActiveTab==='gamepad')renderGamepadTab();});
 
   // ===========================================================
   // CONTROLES TÁCTILES — vinculan botones a la misma tabla `keys`
@@ -1565,7 +1591,7 @@ import { createRoomFlow } from '../js/scenes.js';
         const scheme=controls.keyboard.p1,input={};
         for(const action of ['left','right','jump','basic','special','overdrive'])input[action]=!battlePaused && !!(keys[scheme[action]]||touchActions.has(action));
         const pad=(navigator.getGamepads?.()||[])[0];
-        if(pad&&!battlePaused){input.left ||= (pad.axes[0]||0)<-0.4||!!pad.buttons[14]?.pressed;input.right ||= (pad.axes[0]||0)>0.4||!!pad.buttons[15]?.pressed;for(const action of ['jump','basic','special','overdrive'])input[action] ||= !!pad.buttons[controls.gamepad.p1[action]]?.pressed;}
+        if(pad&&!battlePaused){const gamepadInput=readGamepadState(pad,controls.gamepad.p1);for(const action of ['left','right','jump','basic','special','overdrive'])input[action] ||= gamepadInput[action];}
         onlineNet.sendGameAction({type:'input',match:onlineMatch,input});lastInputSend=timestamp;
       }
       updateEffects();return;
