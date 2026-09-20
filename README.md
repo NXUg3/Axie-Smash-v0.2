@@ -1,3 +1,4 @@
-# Axie Smash — fuente modular
+Axie Smash
+Elevate the gameplay pace and tactical DNA of the classic turn-based game axies to a real-time melee combat environment, but with monstrous variations.
 
-Esta carpeta es la fuente única de la versión 0.2. Consulta ../LEEME.md para jugar, generar el HTML, iniciar el servidor y revisar las funciones y las pruebas.
+PLAY HERE - https://nxug3.github.io/Axie-Smash-v0.2/
